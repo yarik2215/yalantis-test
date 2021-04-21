@@ -12,7 +12,3 @@ class DevelopmentConfig(object):
 
     DEBUG = True
     SQLALCHEMY_TRACK_MODIFICATIONS = True
-
-
-class TestingConfig(DevelopmentConfig):
-    SQLALCHEMY_DATABASE_URI = f"sqlite:///{DevelopmentConfig.BASE_DIR}/test_db.sqlite"

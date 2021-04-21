@@ -1,13 +1,13 @@
 import datetime
-from flask import request
+from flask import request, abort
 from flask_restplus import Resource, Api, fields
-from marshmallow.fields import Date
+from webargs import fields as args_fields
+from webargs.flaskparser import use_kwargs
+from sqlalchemy import exc
 
 from courses_app.models import Course, db
 from courses_app.schemas import CourseShema
 
-from webargs import fields as args_fields
-from webargs.flaskparser import use_kwargs
 
 api = Api(doc='/docs')
 
@@ -40,8 +40,11 @@ class CoursesList(Resource):
             request.get_json()
         )
         course = Course(**course_data)
-        db.session.add(course)
-        db.session.commit()
+        try:
+            db.session.add(course)
+            db.session.commit()
+        except exc.IntegrityError as e:
+            abort(400, description=f"Course with name {course.name} already exist")
         return CourseShema().dump(course)
 
 
@@ -62,7 +65,12 @@ class CoursesDetailed(Resource):
             request.get_json()
         )
         course = self._get_object(id)
-        return CourseShema().dumps(course)
+        for key, value in course_data.items():
+            setattr(course, key, value)
+        db.session.commit()
+        return CourseShema().dump(course)
     
     def delete(self, id: int):
-        Course.query.delete(id)
+        if Course.query.filter_by(id=id).delete() == 0:
+            abort(400, f'No course with id {id}')
+        db.session.commit()
